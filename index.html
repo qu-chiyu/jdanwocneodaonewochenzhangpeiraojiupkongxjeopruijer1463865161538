@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ch-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>齿余计算器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        .calculator { max-width: 400px; margin: 50px auto; border: 2px solid #e0e0e0; border-radius: 12px; padding: 20px; position: relative; }
+        .settings-btn { position: absolute; top: 8px; left: 15px; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer; z-index: 10; }
+        .settings-btn:hover { opacity: 0.9; }
+        #display { width: 100%; height: 80px; margin-bottom: 20px; padding: 15px; font-size: 28px; text-align: right; border: none; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+        button { padding: 20px; font-size: 20px; border: none; border-radius: 8px; cursor: pointer; transition: all 0.3s; }
+        button:hover { transform: scale(1.05); opacity: 0.9; }
+        .operator { color: #333; }
+        .equal { color: #333; grid-column: span 2; }
+        .special { color: #333; }
+
+        /* 系统默认配色（深灰背景） */
+        .calculator.macaron { background: #333333; }
+        .calculator.macaron #display { background: #444444; color: #ffffff; }
+        .calculator.macaron button { background: #ffea7f; }
+        .calculator.macaron .operator { background: #ffc1e9; }
+        .calculator.macaron .equal { background: #b3e0ff; }
+        .calculator.macaron .special { background: #c1ffd7; }
+        .calculator.macaron .settings-btn { background: #555; color: #fff; }
+
+        .calculator.gray-scale { background: #333333; }
+        .calculator.gray-scale #display { background: #222; color: #fff; }
+        .calculator.gray-scale button { background: #f5f5f5; color: #111; }
+        .calculator.gray-scale .operator { background: #ccc; }
+        .calculator.gray-scale .equal { background: #999; }
+        .calculator.gray-scale .special { background: #bbb; }
+        .calculator.gray-scale .settings-btn { background: #555; color: #fff; }
+
+        .calculator.orange-yellow { background: #333333; }
+        .calculator.orange-yellow #display { background: #2d2d2d; color: #e48e41; }
+        .calculator.orange-yellow button { background: #fff3cd; color: #333; }
+        .calculator.orange-yellow .operator { background: #ffc107; }
+        .calculator.orange-yellow .equal { background: #fd7e14; }
+        .calculator.orange-yellow .special { background: #ffecb3; }
+        .calculator.orange-yellow .settings-btn { background: #555; color: #fff; }
+
+        .calculator.white-blue { background: #333333; }
+        .calculator.white-blue #display { background: #d4e4ef; color: #8abdd2; }
+        .calculator.white-blue button { background: #f0f8ff; color: #0047ab; }
+        .calculator.white-blue .operator { background: #b3e5fc; }
+        .calculator.white-blue .equal { background: #81d4fa; }
+        .calculator.white-blue .special { background: #e0f2fe; }
+        .calculator.white-blue .settings-btn { background: #555; color: #fff; }
+
+        .calculator.rainbow { background: #333333; }
+        .calculator.rainbow #display { background: #444444; color: #2d2d2d; }
+        .calculator.rainbow button { background: #ff6b6b; }
+        .calculator.rainbow .operator { background: #ffd166; }
+        .calculator.rainbow .equal { background: #06d6a0; }
+        .calculator.rainbow .special { background: #118ab2; }
+        .calculator.rainbow .settings-btn { background: #555; color: #fff; }
+
+        /* 春野花园配色（严格匹配图片标注+优化按钮色） */
+        .calculator.spring-garden { 
+            background: #f5f5dc; /* 图片标注背景色（浅黄绿） */
+        }
+        .calculator.spring-garden #display { 
+            background: #f5f5dc; /* 背景同色 */
+            color: #c9a0dc; /* 图片标注字体色（浅紫） */
+        }
+        .calculator.spring-garden button { 
+            background: #add8e6; /* 图片标注按钮色（浅蓝色） */
+            color: #c9a0dc; /* 所有按钮文字统一用图片标注字体色 */
+        }
+        .calculator.spring-garden .operator { 
+            background: #ffc0cb; /* 图片标注按钮色（粉色） */
+            color: #c9a0dc; /* 运算符文字统一用图片标注字体色 */
+        }
+        .calculator.spring-garden .equal { 
+            background: #ffdab9; /* 优化浅橙色（原橙色变浅） */
+            color: #c9a0dc; /* 等号文字统一用图片标注字体色 */
+        }
+        .calculator.spring-garden .special { 
+            background: #ffe6f2; /* 特别浅粉色（C/%/√按钮） */
+            color: #c9a0dc; /* 特殊按钮文字统一用图片标注字体色 */
+            border: 1px solid #c9a0dc; /* 轻微描边区分 */
+        }
+        .calculator.spring-garden .settings-btn { 
+            background: #ffe6f2; /* 跟特殊按钮同浅粉色 */
+            color: #c9a0dc; /* 设置按钮文字用图片标注字体色 */
+        }
+
+        .settings-page { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
+        .settings-content { background: #444; padding: 25px; border-radius: 10px; width: 320px; text-align: center; }
+        .main-setting-btn { width: 100%; padding: 12px; margin: 8px 0; border: none; border-radius: 5px; cursor: pointer; color: #fff; font-size: 16px; background: #555; }
+        .main-setting-btn:hover { background: #666; }
+        .option-list { display: none; margin: 10px 0; gap: 6px; flex-direction: column; }
+        .option-btn { width: 100%; padding: 10px; border: none; border-radius: 5px; cursor: pointer; color: #333; font-size: 14px; }
+        .close-btn { width: 100%; padding: 10px; margin-top: 10px; background: #666; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
+        .close-btn:hover { background: #777; }
+        .maker-text { color: #fff; font-size: 14px; line-height: 1.6; margin: 15px 0; padding: 10px; background: #555; border-radius: 5px; }
+        .history-list { max-height: 200px; overflow-y: auto; background: #555; border-radius: 5px; padding: 10px; margin: 10px 0; }
+        .history-item { font-size: 14px; padding: 6px 0; border-bottom: 1px solid #666; text-align: left; }
+        .history-item:last-child { border-bottom: none; }
+        .clear-history-btn { color: #fff; margin-top: 8px; }
+        .clear-history-btn:hover { opacity: 0.9; }
+        .calculator.macaron .history-item { color: #b3e0ff; }
+        .calculator.macaron .clear-history-btn { background: #b3e0ff; }
+        .calculator.gray-scale .history-item { color: #999; }
+        .calculator.gray-scale .clear-history-btn { background: #999; }
+        .calculator.orange-yellow .history-item { color: #fd7e14; }
+        .calculator.orange-yellow .clear-history-btn { background: #fd7e14; }
+        .calculator.white-blue .history-item { color: #81d4fa; }
+        .calculator.white-blue .clear-history-btn { background: #81d4fa; }
+        .calculator.rainbow .history-item { color: #06d6a0; }
+        .calculator.rainbow .clear-history-btn { background: #06d6a0; }
+        .calculator.spring-garden .history-item { color: #c9a0dc; } /* 历史记录文字用图片标注字体色 */
+        .calculator.spring-garden .clear-history-btn { 
+            background: #ffe6f2; /* 清空记录按钮用浅粉色 */
+            color: #c9a0dc; /* 文字用图片标注字体色 */
+        }
+        /* 字体样式补充 */
+        .calculator.fancy-font button,
+        .calculator.fancy-font #display,
+        .calculator.smooth-fancy-font button,
+        .calculator.smooth-fancy-font #display,
+        .calculator.code-font button,
+        .calculator.code-font #display,
+        .calculator.art-font button,
+        .calculator.art-font #display {
+            font-family: inherit;
+        }
+        /* 社区模块样式 */
+        .community-item { padding: 12px; background: #555; border-radius: 5px; color: #fff; text-align: left; margin-bottom: 8px; }
+        .community-item-title { font-weight: bold; margin-bottom: 6px; }
+        .community-download-btn { width: 100%; padding: 8px; background: #777; color: #fff; border: none; border-radius: 3px; cursor: pointer; margin-top: 8px; }
+        .community-download-btn:hover { background: #888; }
+    </style>
+</head>
+<body>
+    <div class="calculator macaron">
+        <button class="settings-btn" onclick="openSettings()">设置</button>
+        <input type="text" id="display" readonly>
+        <div class="buttons">
+            <button class="special" onclick="clearDisplay()">C</button>
+            <button class="special" onclick="appendToDisplay('%')">%</button>
+            <button class="special" onclick="calculateSquareRoot()">√</button>
+            <button class="operator" onclick="appendToDisplay('/')">÷</button>
+            <button onclick="appendToDisplay('7')">7</button>
+            <button onclick="appendToDisplay('8')">8</button>
+            <button onclick="appendToDisplay('9')">9</button>
+            <button class="operator" onclick="appendToDisplay('*')">×</button>
+            <button onclick="appendToDisplay('4')">4</button>
+            <button onclick="appendToDisplay('5')">5</button>
+            <button onclick="appendToDisplay('6')">6</button>
+            <button class="operator" onclick="appendToDisplay('-')">-</button>
+            <button onclick="appendToDisplay('1')">1</button>
+            <button onclick="appendToDisplay('2')">2</button>
+            <button onclick="appendToDisplay('3')">3</button>
+            <button class="operator" onclick="appendToDisplay('+')">+</button>
+            <button onclick="appendToDisplay('0')">0</button>
+            <button onclick="appendToDisplay('.')">.</button>
+            <button class="equal" onclick="calculateResult()">=</button>
+        </div>
+    </div>
+    <div class="settings-page" id="settingsPage">
+        <div class="settings-content">
+            <button class="main-setting-btn" onclick="toggleOptionList('colorOptions')">配色选择</button>
+            <div class="option-list" id="colorOptions">
+                <button class="option-btn" onclick="changeColor('macaron')">马卡龙</button>
+                <button class="option-btn" onclick="changeColor('gray-scale')">黑白</button>
+                <button class="option-btn" onclick="changeColor('orange-yellow')">橙黄</button>
+                <button class="option-btn" onclick="changeColor('white-blue')">白蓝诗意</button>
+                <button class="option-btn" onclick="changeColor('rainbow')">彩虹</button>
+            </div>
+            <button class="main-setting-btn" onclick="toggleOptionList('languageOptions')">语言选择</button>
+            <div class="option-list" id="languageOptions">
+                <button class="option-btn" onclick="changeLanguage('zh')">古汉語</button>
+                <button class="option-btn" onclick="changeLanguage('en')">English</button>
+                <button class="option-btn" onclick="changeLanguage('jp')">日本語</button>
+                <button class="option-btn" onclick="changeLanguage('ch')">中文</button>
+                <button class="option-btn" onclick="changeLanguage('lm')">罗马</button>
+            </div>
+            <button class="main-setting-btn" onclick="toggleOptionList('fontOptions')">字体设置</button>
+            <div class="option-list" id="fontOptions">
+                <button class="option-btn" onclick="changeFont('default')">默认字体</button>
+                <button class="option-btn" onclick="changeFont('fancy')">华丽秀体</button>
+                <button class="option-btn" onclick="changeFont('smooth-fancy')">连畅华丽体</button>
+                <button class="option-btn" onclick="changeFont('code')">等宽字体</button>
+                <button class="option-btn" onclick="changeFont('art')">艺术体</button>
+            </div>
+            <button class="main-setting-btn" onclick="toggleOptionList('historyOptions')">历史记录</button>
+            <div class="option-list" id="historyOptions">
+                <div class="history-list" id="historyContainer">
+                    <div class="history-item">暂无计算记录</div>
+                </div>
+                <button class="option-btn clear-history-btn" onclick="clearHistory()">清空记录</button>
+            </div>
+            <button class="main-setting-btn" onclick="toggleOptionList('makerOptions')">制作员</button>
+            <div class="option-list" id="makerOptions">
+                <div class="maker-text">该网站由B站qu齿余制作，所有解释权归齿余拥有</div>
+            </div>
+            <!-- 社区模块 -->
+            <button class="main-setting-btn" onclick="toggleOptionList('communityOptions')">社区</button>
+            <div class="option-list" id="communityOptions">
+                <div class="community-item">
+                    <div class="community-item-title">春野花园 配色</div>
+                    <div>匹配图片标注颜色+浅粉/浅橙优化</div>
+                    <button class="community-download-btn" onclick="changeColor('spring-garden')">下载使用</button>
+                </div>
+            </div>
+            <button class="close-btn" onclick="closeSettings()">关闭</button>
+        </div>
+    </div>
+    <script>
+        const settingsPage = document.getElementById('settingsPage');
+        window.currentLang = 'ch'; 
+        window.currentTheme = 'macaron'; 
+        window.currentFont = 'default'; 
+        window.calculationHistory = [];
+
+        const fontCharMaps = {
+            default: {},
+            fancy: {
+                '0': '𝟎', '1': '𝟏', '2': '𝟐', '3': '𝟑', '4': '𝟒',
+                '5': '𝟓', '6': '𝟔', '7': '𝟕', '8': '𝟖', '9': '𝟗',
+                'C': '𝑪', 'c': '𝑪'
+            },
+            'smooth-fancy': {
+                '0': '𝟎', '1': '𝟏', '2': '𝟐', '3': '𝟑', '4': '𝟒',
+                '5': '𝟓', '6': '𝟔', '7': '𝟕', '8': '𝟖', '9': '𝟗',
+                'C': '𝓒', 'c': '𝓒'
+            },
+            code: {
+                '0': '𝟶', '1': '𝟷', '2': '𝟸', '3': '𝟹', '4': '𝟺',
+                '5': '𝟻', '6': '𝟼', '7': '𝟽', '8': '𝟾', '9': '𝟿',
+                'C': '𝙲', 'c': '𝙲'
+            },
+            art: {
+                '0': '𝟘', '1': '𝟙', '2': '𝟚', '3': '𝟛', '4': '𝟜',
+                '5': '𝟝', '6': '𝟞', '7': '𝟟', '8': '𝟠', '9': '𝟡',
+                'C': 'ℂ', 'c': 'ℂ'
+            }
+        };
+
+        const buttonTexts = {
+            zh: {
+                clear: '空',
+                percent: '净',
+                sqrt: '根',
+                divide: '除',
+                multiply: '乘',
+                subtract: '去',
+                add: '增',
+                decimal: '點',
+                equal: '出',
+                num0: '零',
+                num1: '壹',
+                num2: '贰',
+                num3: '叁',
+                num4: '肆',
+                num5: '伍',
+                num6: '陆',
+                num7: '柒',
+                num8: '捌',
+                num9: '玖',
+                settings: '设置',
+                title: '多功能计算器',
+                error: '齿余',
+                noHistory: '暂无计算记录',
+                clearHistory: '清空记录'
+            },
+            ch: {
+                clear: 'C',
+                percent: '%',
+                sqrt: '√',
+                divide: '÷',
+                multiply: '×',
+                subtract: '-',
+                add: '+',
+                decimal: '.',
+                equal: '=',
+                num0: '0',
+                num1: '1',
+                num2: '2',
+                num3: '3',
+                num4: '4',
+                num5: '5',
+                num6: '6',
+                num7: '7',
+                num8: '8',
+                num9: '9',
+                settings: '设置',
+                title: '计算器',
+                error: '齿余',
+                noHistory: '暂无计算记录',
+                clearHistory: '清空记录'
+            },
+            lm: {
+                clear: 'C',
+                percent: '%',
+                sqrt: '√',
+                divide: '÷',
+                multiply: '×',
+                subtract: '-',
+                add: '+',
+                decimal: '.',
+                equal: '=',
+                num0: 'Ⅹ',
+                num1: 'Ⅰ',
+                num2: 'Ⅱ',
+                num3: 'Ⅲ',
+                num4: 'Ⅳ',
+                num5: 'Ⅴ',
+                num6: 'Ⅵ',
+                num7: 'Ⅶ',
+                num8: 'Ⅷ',
+                num9: 'Ⅸ',
+                settings: 'Settings',
+                title: 'Multi-Function Calculator',
+                error: 'qu',
+                noHistory: 'No history',
+                clearHistory: 'Clear History'
+            },
+            jp: {
+                clear: '無',
+                percent: '％',
+                sqrt: '√',
+                divide: '割',
+                multiply: '掛',
+                subtract: '引',
+                add: '足',
+                decimal: '.',
+                equal: '＝',
+                num0: '0',
+                num1: '1',
+                num2: '2',
+                num3: '3',
+                num4: '4',
+                num5: '5',
+                num6: '6',
+                num7: '7',
+                num8: '8',
+                num9: '9',
+                settings: '設定',
+                title: '多機能電卓',
+                error: '齒の餘',
+                noHistory: '計算履歴なし',
+                clearHistory: '履歴を消去'
+            },
+            en: {
+                clear: 'C',
+                percent: '%',
+                sqrt: '√',
+                divide: '÷',
+                multiply: '×',
+                subtract: '-',
+                add: '+',
+                decimal: '.',
+                equal: '=',
+                num0: '0',
+                num1: '1',
+                num2: '2',
+                num3: '3',
+                num4: '4',
+                num5: '5',
+                num6: '6',
+                num7: '7',
+                num8: '8',
+                num9: '9',
+                settings: 'Settings',
+                title: 'Multi-Function Calculator',
+                error: 'Error',
+                noHistory: 'No calculation history',
+                clearHistory: 'Clear History'
+            }
+        };
+
+        function convertToCurrentFontText(text) {
+            const charMap = fontCharMaps[window.currentFont];
+            return text.split('').map(char => charMap[char] || char).join('');
+        }
+
+        function restoreOriginalText(text) {
+            let original = text;
+            const allCharEntries = Object.values(fontCharMaps).flatMap(map => Object.entries(map));
+            allCharEntries.forEach(([orig, fancy]) => {
+                original = original.split(fancy).join(orig);
+            });
+            return original;
+        }
+
+        function safeEvaluate(expression) {
+            const validPattern = /^[\d+\-*/.%]+$/;
+            if (!validPattern.test(expression)) return null;
+            const processedExpr = expression.replace(/(\d+)%/g, '$1/100');
+            try {
+                return new Function(`return ${processedExpr}`)();
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function toggleOptionList(listId) {
+            const targetList = document.getElementById(listId);
+            document.querySelectorAll('.option-list').forEach(list => {
+                if (list.id !== listId) list.style.display = 'none';
+            });
+            targetList.style.display = targetList.style.display === 'flex' ? 'none' : 'flex';
+            if (listId === 'historyOptions') renderHistory();
+        }
+
+        function openSettings() {
+            settingsPage.style.display = 'flex';
+            document.querySelectorAll('.option-list').forEach(list => list.style.display = 'none');
+        }
+
+        function closeSettings() {
+            settingsPage.style.display = 'none';
+            document.querySelectorAll('.option-list').forEach(list => list.style.display = 'none');
+        }
+
+        function changeColor(theme) {
+            const calculator = document.querySelector('.calculator');
+            calculator.className = `calculator ${theme}`;
+            if (window.currentFont !== 'default') {
+                calculator.classList.add(`${window.currentFont}-font`);
+            }
+            window.currentTheme = theme;
+            const settingsBtn = document.querySelector('.settings-btn');
+            settingsBtn.textContent = convertToCurrentFontText(buttonTexts[window.currentLang].settings);
+            closeSettings();
+        }
+
+        function changeFont(fontType) {
+            const calculator = document.querySelector('.calculator');
+            calculator.className = `calculator ${window.currentTheme}`;
+            if (fontType !== 'default') {
+                calculator.classList.add(`${fontType}-font`);
+            }
+            window.currentFont = fontType;
+            const display = document.getElementById('display');
+            display.value = convertToCurrentFontText(restoreOriginalText(display.value));
+            updateButtonFonts();
+            closeSettings();
+        }
+
+        function changeLanguage(lang) {
+            const texts = buttonTexts[lang];
+            document.title = texts.title;
+            const settingsBtn = document.querySelector('.settings-btn');
+            settingsBtn.textContent = convertToCurrentFontText(texts.settings);
+            const buttons = document.querySelectorAll('.buttons button');
+            buttons[0].textContent = convertToCurrentFontText(texts.clear);
+            buttons[1].textContent = convertToCurrentFontText(texts.percent);
+            buttons[2].textContent = convertToCurrentFontText(texts.sqrt);
+            buttons[3].textContent = convertToCurrentFontText(texts.divide);
+            buttons[4].textContent = convertToCurrentFontText(texts.num7);
+            buttons[5].textContent = convertToCurrentFontText(texts.num8);
+            buttons[6].textContent = convertToCurrentFontText(texts.num9);
+            buttons[7].textContent = convertToCurrentFontText(texts.multiply);
+            buttons[8].textContent = convertToCurrentFontText(texts.num4);
+            buttons[9].textContent = convertToCurrentFontText(texts.num5);
+            buttons[10].textContent = convertToCurrentFontText(texts.num6);
+            buttons[11].textContent = convertToCurrentFontText(texts.subtract);
+            buttons[12].textContent = convertToCurrentFontText(texts.num1);
+            buttons[13].textContent = convertToCurrentFontText(texts.num2);
+            buttons[14].textContent = convertToCurrentFontText(texts.num3);
+            buttons[15].textContent = convertToCurrentFontText(texts.add);
+            buttons[16].textContent = convertToCurrentFontText(texts.num0);
+            buttons[17].textContent = convertToCurrentFontText(texts.decimal);
+            buttons[18].textContent = convertToCurrentFontText(texts.equal);
+            document.querySelector('.clear-history-btn').textContent = convertToCurrentFontText(texts.clearHistory);
+
+            if (calculationHistory.length === 0) {
+                document.getElementById('historyContainer').innerHTML = `<div class="history-item">${convertToCurrentFontText(texts.noHistory)}</div>`;
+            } else {
+                renderHistory();
+            }
+
+            window.currentLang = lang;
+            closeSettings();
+        }
+
+        function updateButtonFonts() {
+            const texts = buttonTexts[window.currentLang];
+            const buttons = document.querySelectorAll('.buttons button');
+            buttons[0].textContent = convertToCurrentFontText(texts.clear);
+            buttons[1].textContent = convertToCurrentFontText(texts.percent);
+            buttons[2].textContent = convertToCurrentFontText(texts.sqrt);
+            buttons[3].textContent = convertToCurrentFontText(texts.divide);
+            buttons[4].textContent = convertToCurrentFontText(texts.num7);
+            buttons[5].textContent = convertToCurrentFontText(texts.num8);
+            buttons[6].textContent = convertToCurrentFontText(texts.num9);
+            buttons[7].textContent = convertToCurrentFontText(texts.multiply);
+            buttons[8].textContent = convertToCurrentFontText(texts.num4);
+            buttons[9].textContent = convertToCurrentFontText(texts.num5);
+            buttons[10].textContent = convertToCurrentFontText(texts.num6);
+            buttons[11].textContent = convertToCurrentFontText(texts.subtract);
+            buttons[12].textContent = convertToCurrentFontText(texts.num1);
+            buttons[13].textContent = convertToCurrentFontText(texts.num2);
+            buttons[14].textContent = convertToCurrentFontText(texts.num3);
+            buttons[15].textContent = convertToCurrentFontText(texts.add);
+            buttons[16].textContent = convertToCurrentFontText(texts.num0);
+            buttons[17].textContent = convertToCurrentFontText(texts.decimal);
+            buttons[18].textContent = convertToCurrentFontText(texts.equal);
+            document.querySelector('.clear-history-btn').textContent = convertToCurrentFontText(texts.clearHistory);
+        }
+
+        function appendToDisplay(value) {
+            const display = document.getElementById('display');
+            display.value += convertToCurrentFontText(value);
+        }
+
+        function clearDisplay() {
+            document.getElementById('display').value = '';
+        }
+
+        function calculateSquareRoot() {
+            const display = document.getElementById('display');
+            const originalValue = restoreOriginalText(display.value);
+            const texts = buttonTexts[window.currentLang];
+            const value = safeEvaluate(originalValue);
+            if (value !== null && !isNaN(value) && value >= 0) {
+                const result = Math.sqrt(value);
+                display.value = convertToCurrentFontText(result.toString());
+                addToHistory(`${originalValue} √ = ${result}`);
+            } else {
+                display.value = convertToCurrentFontText(texts.error);
+            }
+        }
+
+        function calculateResult() {
+            const display = document.getElementById('display');
+            const originalValue = restoreOriginalText(display.value);
+            const texts = buttonTexts[window.currentLang];
+            const result = safeEvaluate(originalValue);
+            if (result !== null && !isNaN(result)) {
+                display.value = convertToCurrentFontText(result.toString());
+                addToHistory(`${originalValue} = ${result}`);
+            } else {
+                display.value = convertToCurrentFontText(texts.error);
+            }
+        }
+
+        function addToHistory(record) {
+            if (calculationHistory.length >= 10) calculationHistory.shift();
+            calculationHistory.push(record);
+            if (document.getElementById('historyOptions').style.display === 'flex') renderHistory();
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('historyContainer');
+            const texts = buttonTexts[window.currentLang];
+            if (calculationHistory.length === 0) {
+                container.innerHTML = `<div class="history-item">${convertToCurrentFontText(texts.noHistory)}</div>`;
+                return;
+            }
+            container.innerHTML = '';
+            calculationHistory.reverse().forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.textContent = convertToCurrentFontText(item);
+                container.appendChild(historyItem);
+            });
+            calculationHistory.reverse();
+        }
+
+        function clearHistory() {
+            calculationHistory = [];
+            const texts = buttonTexts[window.currentLang];
+            document.getElementById('historyContainer').innerHTML = `<div class="history-item">${convertToCurrentFontText(texts.noHistory)}</div>`;
+        }
+
+        window.onclick = function(event) {
+            if (event.target === settingsPage) closeSettings();
+        }
+
+        changeLanguage(window.currentLang);
+        changeColor(window.currentTheme);
+        changeFont(window.currentFont);
+    </script>
+<pre>
+版本号2.0.5
+正式版1.2.0
+修复已知特性
+添加社区
+</pre>
+</body>
+</html>
